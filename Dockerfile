@@ -1,6 +1,11 @@
 # 1. Base image
 FROM python:3.12-slim
 
+# WHY: curl is needed for HEALTHCHECK
+RUN apt-get update \
+ && apt-get install -y curl \
+ && rm -rf /var/lib/apt/lists/*
+
 # 2. Set working directory
 WORKDIR /app
 
