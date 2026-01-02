@@ -7,6 +7,7 @@ on:
 
 jobs:
   docker:
+    name: Build & Push Docker Image
     runs-on: ubuntu-latest
 
     steps:
@@ -28,7 +29,8 @@ jobs:
           docker push ${{ secrets.DOCKER_USERNAME }}/devops-prod-app:latest
 
   deploy:
-    needs: build
+    name: Deploy to EC2
+    needs: docker        # 🔥 THIS WAS THE BUG
     runs-on: ubuntu-latest
 
     steps:
@@ -39,10 +41,11 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            docker pull omprakashpankaj/devops-prod-app:latest
+            docker pull ${{ secrets.DOCKER_USERNAME }}/devops-prod-app:latest
             docker stop prod-app || true
             docker rm prod-app || true
             docker run -d \
               --name prod-app \
               -p 5000:5000 \
-              omprakashpankaj/devops-prod-app:latest
+              ${{ secrets.DOCKER_USERNAME }}/devops-prod-app:latest
+
