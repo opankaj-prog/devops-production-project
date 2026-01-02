@@ -42,10 +42,11 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             docker pull ${{ secrets.DOCKER_USERNAME }}/devops-prod-app:latest
-            docker stop prod-app || true
-            docker rm prod-app || true
+            docker stop devops-prod-container || true
+            docker rm devops-prod-container || true
             docker run -d \
-              --name prod-app \
+              --name devops-prod-container \
               -p 5000:5000 \
               ${{ secrets.DOCKER_USERNAME }}/devops-prod-app:latest
+
 
