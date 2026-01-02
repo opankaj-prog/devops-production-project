@@ -5,7 +5,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return "Your MLOps Production App is running..., healthy..., and secure. your app is reached to end users and accessible from anywhere across the world "
+    return "Your MLOps Production App is running..., healthy..., and secure. your app is reached to end users and accessible from anywhere over the world "
 
 @app.route("/health")
 def health():
