@@ -40,51 +40,52 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
-          set -e
+          script: |
+           set -e
 
-          IMAGE=${{ secrets.DOCKER_USERNAME }}/devops-prod-app:latest
+           IMAGE=${{ secrets.DOCKER_USERNAME }}/devops-prod-app:latest
 
-          echo "🎯 Detecting current live color"
-          CURRENT=$(~/deploy/current_color.sh)
+           echo "🎯 Detecting current live color"
+           CURRENT=$(~/deploy/current_color.sh)
 
-          if [ "$CURRENT" = "green" ]; then
-            NEW=blue
-            NEW_PORT=5000
-            OLD=green
-          else
-            NEW=green
-            NEW_PORT=5001
-            OLD=blue
-          fi
+           if [ "$CURRENT" = "green" ]; then
+             NEW=blue
+             NEW_PORT=5000
+             OLD=green
+           else
+             NEW=green
+             NEW_PORT=5001
+             OLD=blue
+           fi
 
-          echo "➡️ Deploying new version to $NEW on port $NEW_PORT"
+           echo "➡️ Deploying new version to $NEW on port $NEW_PORT"
 
-          docker pull $IMAGE
+           docker pull $IMAGE
 
-          docker stop devops-$NEW || true
-          docker rm devops-$NEW || true
+           docker stop devops-$NEW || true
+           docker rm devops-$NEW || true
 
-          docker run -d \
-          --name devops-$NEW \
-          -p $NEW_PORT:5000 \
-          --restart always \
-          $IMAGE
+           docker run -d \
+           --name devops-$NEW \
+           -p $NEW_PORT:5000 \
+           --restart always \
+           $IMAGE
 
-          echo "⏳ Waiting for new container"
-          sleep 10
+           echo "⏳ Waiting for new container"
+           sleep 10
 
-          echo "🔍 Health check on new container"
-          curl -f http://localhost:$NEW_PORT/health
+           echo "🔍 Health check on new container"
+           curl -f http://localhost:$NEW_PORT/health
 
-          echo "🔁 Switching Nginx to $NEW"
-          sudo sed -i "s/127.0.0.1:[0-9]\+/127.0.0.1:$NEW_PORT/" /etc/nginx/sites-available/default
-          sudo nginx -t
-          sudo systemctl reload nginx
+           echo "🔁 Switching Nginx to $NEW"
+           sudo sed -i "s/127.0.0.1:[0-9]\+/127.0.0.1:$NEW_PORT/" /etc/nginx/sites-available/default
+           sudo nginx -t
+           sudo systemctl reload nginx
 
-          echo "🛑 Stopping old container: $OLD"
-          docker stop devops-$OLD || true
+           echo "🛑 Stopping old container: $OLD"
+           docker stop devops-$OLD || true
 
-          echo "✅ Blue-Green deployment completed"
+           echo "✅ Blue-Green deployment completed"
 
 
 
