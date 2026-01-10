@@ -85,6 +85,9 @@ jobs:
 
             sudo nginx -t
             sudo systemctl reload nginx
+            echo "🔎 Current live color after deploy:"
+            ~/deploy/current_color.sh
+
 
             echo "🎉 Deployment successful"
 
