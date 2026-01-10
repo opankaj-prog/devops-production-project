@@ -92,4 +92,4 @@ jobs:
             echo "❌ Health check failed — rolling back"
             ~/deploy/rollback.sh $CURRENT_COLOR
             exit 1
-          fi
+           fi
