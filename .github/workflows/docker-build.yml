@@ -45,48 +45,51 @@ jobs:
 
            IMAGE=${{ secrets.DOCKER_USERNAME }}/devops-prod-app:latest
 
-           echo "🎯 Detecting current live color"
-           CURRENT=$(~/deploy/current_color.sh)
+           CURRENT_COLOR=$(~/deploy/current_color.sh)
+           echo "Current live color: $CURRENT_COLOR"
 
-           if [ "$CURRENT" = "green" ]; then
-             NEW=blue
-             NEW_PORT=5000
-             OLD=green
-           else
-             NEW=green
+           if [ "$CURRENT_COLOR" = "blue" ]; then
+             NEW_COLOR=green
              NEW_PORT=5001
-             OLD=blue
+             OLD_PORT=5000
+             NEW_CONTAINER=devops-green-container
+           else
+             NEW_COLOR=blue
+             NEW_PORT=5000
+             OLD_PORT=5001
+             NEW_CONTAINER=devops-blue
            fi
 
-           echo "➡️ Deploying new version to $NEW on port $NEW_PORT"
+           echo "🚀 Deploying $NEW_COLOR on port $NEW_PORT"
 
            docker pull $IMAGE
 
-           docker stop devops-$NEW || true
-           docker rm devops-$NEW || true
+           docker stop $NEW_CONTAINER || true
+           docker rm $NEW_CONTAINER || true
 
            docker run -d \
-           --name devops-$NEW \
+           --name $NEW_CONTAINER \
            -p $NEW_PORT:5000 \
-           --restart always \
            $IMAGE
 
-           echo "⏳ Waiting for new container"
+           echo "⏳ Waiting for app startup"
            sleep 10
 
-           echo "🔍 Health check on new container"
-           curl -f http://localhost:$NEW_PORT/health
+           echo "🔍 Health check on $NEW_PORT"
+           if curl -f http://localhost:$NEW_PORT; then
+            echo "✅ Health check passed"
 
-           echo "🔁 Switching Nginx to $NEW"
-           sudo sed -i "s/127.0.0.1:[0-9]\+/127.0.0.1:$NEW_PORT/" /etc/nginx/sites-available/default
-           sudo nginx -t
-           sudo systemctl reload nginx
+            echo "🔁 Switching Nginx to $NEW_COLOR"
+            sudo sed -i "s/server 127.0.0.1:500[0-9];/server 127.0.0.1:$NEW_PORT;/" \
+            /etc/nginx/sites-available/default
 
-           echo "🛑 Stopping old container: $OLD"
-           docker stop devops-$OLD || true
+            sudo nginx -t
+            sudo systemctl reload nginx
 
-           echo "✅ Blue-Green deployment completed"
+            echo "🎉 Deployment successful"
 
-
-
-
+           else
+            echo "❌ Health check failed — rolling back"
+            ~/deploy/rollback.sh $CURRENT_COLOR
+            exit 1
+          fi
