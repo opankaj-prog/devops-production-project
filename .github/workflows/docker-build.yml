@@ -10,6 +10,9 @@ jobs:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
 
+    outputs:
+      image_tag: ${{ steps.build.outputs.image_tag }}
+
     env:
       IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/devops-prod-app
 
@@ -24,13 +27,14 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build & Push Image
+        id: build
         run: |
           TAG=$(echo $GITHUB_SHA | cut -c1-7)
           docker build -t $IMAGE_NAME:$TAG .
           docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:latest
           docker push $IMAGE_NAME:$TAG
           docker push $IMAGE_NAME:latest
-          echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
+          echo "image_tag=$TAG" >> $GITHUB_OUTPUT
 
   deploy:
     name: Deploy to EC2
@@ -47,5 +51,5 @@ jobs:
           script: |
             set -e
             cd ~/deploy
-            ./deploy.sh ${{ env.IMAGE_TAG }}
+            ./deploy.sh ${{ needs.build.outputs.image_tag }}
 
