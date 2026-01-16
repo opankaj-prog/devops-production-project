@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Build, Push & Deploy (Blue-Green)
 
 on:
   push:
@@ -6,16 +6,15 @@ on:
       - main
 
 jobs:
-  docker:
+  build:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
+
     env:
       IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/devops-prod-app
-      VERSION: ${{ github.run_id }}
-      SHORT_SHA: ${{ github.sha }}
 
     steps:
-      - name: Checkout source code
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Login to Docker Hub
@@ -24,87 +23,29 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-
-      - name: Build Docker image
+      - name: Build & Push Image
         run: |
-          SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
-          docker build -t $IMAGE_NAME:$SHORT_SHA .
-          docker tag $IMAGE_NAME:$SHORT_SHA $IMAGE_NAME:latest
-
-
-      - name: Push Docker image
-        run: |
-          SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
-          docker build -t $IMAGE_NAME:$SHORT_SHA .
-          docker tag $IMAGE_NAME:$SHORT_SHA $IMAGE_NAME:latest
-
-
+          TAG=$(echo $GITHUB_SHA | cut -c1-7)
+          docker build -t $IMAGE_NAME:$TAG .
+          docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:latest
+          docker push $IMAGE_NAME:$TAG
+          docker push $IMAGE_NAME:latest
+          echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
 
   deploy:
     name: Deploy to EC2
-    needs: docker        # 🔥 THIS WAS THE BUG
+    needs: build
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy to EC2
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-           set -e
+            set -e
+            cd ~/deploy
+            ./deploy.sh ${{ env.IMAGE_TAG }}
 
-           IMAGE=${{ secrets.DOCKER_USERNAME }}/devops-prod-app:latest
-
-           CURRENT_COLOR=$(~/deploy/current_color.sh)
-           echo "Current live color: $CURRENT_COLOR"
-
-           if [ "$CURRENT_COLOR" = "blue" ]; then
-             NEW_COLOR=green
-             NEW_PORT=5001
-             OLD_PORT=5000
-             NEW_CONTAINER=devops-green-container
-           else
-             NEW_COLOR=blue
-             NEW_PORT=5000
-             OLD_PORT=5001
-             NEW_CONTAINER=devops-blue
-           fi
-
-           echo "🚀 Deploying $NEW_COLOR on port $NEW_PORT"
-
-           docker pull $IMAGE
-
-           docker stop $NEW_CONTAINER || true
-           docker rm $NEW_CONTAINER || true
-
-           docker run -d \
-           --name $NEW_CONTAINER \
-           -p $NEW_PORT:5000 \
-           $IMAGE
-
-           echo "⏳ Waiting for app startup"
-           sleep 10
-
-           echo "🔍 Health check on $NEW_PORT"
-           if curl -f http://localhost:$NEW_PORT; then
-            echo "✅ Health check passed"
-
-            echo "🔁 Switching Nginx to $NEW_COLOR"
-            sudo sed -i "s/server 127.0.0.1:500[0-9];/server 127.0.0.1:$NEW_PORT;/" \
-            /etc/nginx/sites-available/default
-
-            sudo nginx -t
-            sudo systemctl reload nginx
-            echo "🔎 Current live color after deploy:"
-            ~/deploy/current_color.sh
-
-
-            echo "🎉 Deployment successful"
-
-           else
-            echo "❌ Health check failed — rolling back"
-            ~/deploy/rollback.sh $CURRENT_COLOR
-            exit 1
-           fi
