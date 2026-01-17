@@ -1,58 +1,18 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Dashboard</title>
-    <style>
-        body {
-            font-family: Arial;
-            background: #eef2f3;
-            padding: 40px;
-        }
-        .top {
-            display: flex;
-            justify-content: space-between;
-        }
-        .card {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 20px;
-        }
-        button {
-            padding: 8px 12px;
-            background: #203a43;
-            color: white;
-            border: none;
-        }
-    </style>
-</head>
-<body>
+<h2>Your Dashboard</h2>
 
-<div class="top">
-    <h2>Welcome {{ user }}</h2>
-    <a href="/logout">Logout</a>
-</div>
+<form method="POST">
+  <select name="course">
+    {% for c in courses %}
+    <option>{{ c }}</option>
+    {% endfor %}
+  </select>
+  <button>Enroll</button>
+</form>
 
-<div class="card">
-    <h3>📚 Available DevOps Courses</h3>
-    <form method="POST">
-        <select name="course">
-            {% for c in courses %}
-            <option>{{ c }}</option>
-            {% endfor %}
-        </select>
-        <button>Enroll</button>
-    </form>
-</div>
+<ul>
+  {% for c in enrolled %}
+  <li><a href="/course/{{ c }}">{{ c }}</a></li>
+  {% endfor %}
+</ul>
 
-<div class="card">
-    <h3>✅ Your Enrollments</h3>
-    <ul>
-        {% for e in enrolled %}
-        <li>{{ e }}</li>
-        {% endfor %}
-    </ul>
-</div>
-
-</body>
-</html>
+<a href="/logout">Logout</a>

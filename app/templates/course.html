@@ -1,0 +1,12 @@
+<h2>{{ course }}</h2>
+<p>Progress: {{ progress }}%</p>
+
+<ul>
+  {% for l in lessons %}
+  <li>{{ l }}</li>
+  {% endfor %}
+</ul>
+
+<form method="POST">
+  <button>Mark Lesson Completed</button>
+</form>
