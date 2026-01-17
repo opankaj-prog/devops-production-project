@@ -1,33 +1,56 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from datetime import datetime
-import os
 
 app = Flask(__name__)
+app.secret_key = "devops-production-secret"
 
-# REQUIRED for session management
-app.secret_key = "production-secret-key"
+# In-memory storage (DB comes later in real prod)
+USERS = {}
+ENROLLMENTS = {}
 
-# In-memory storage (production apps use DB)
-MESSAGES = []
+COURSES = [
+    "Linux Fundamentals",
+    "Git & GitHub",
+    "Docker & Containers",
+    "CI/CD with Jenkins",
+    "Kubernetes (K8s)",
+    "AWS for DevOps",
+]
 
-# Dummy user (for learning purpose)
-USERS = {
-    "admin": "admin123"
-}
+@app.route("/")
+def home():
+    return redirect(url_for("login"))
 
-@app.route("/", methods=["GET", "POST"])
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+
+        if username in USERS:
+            return render_template("register.html", error="User already exists")
+
+        USERS[username] = password
+        ENROLLMENTS[username] = []
+        return redirect(url_for("login"))
+
+    return render_template("register.html")
+
+
+@app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
+        username = request.form["username"]
+        password = request.form["password"]
 
         if USERS.get(username) == password:
             session["user"] = username
             return redirect(url_for("dashboard"))
-        else:
-            return render_template("index.html", error="Invalid credentials")
 
-    return render_template("index.html")
+        return render_template("login.html", error="Invalid credentials")
+
+    return render_template("login.html")
 
 
 @app.route("/dashboard", methods=["GET", "POST"])
@@ -35,25 +58,24 @@ def dashboard():
     if "user" not in session:
         return redirect(url_for("login"))
 
+    user = session["user"]
+
     if request.method == "POST":
-        message = request.form.get("message")
-        if message:
-            MESSAGES.append({
-                "user": session["user"],
-                "message": message,
-                "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            })
+        course = request.form["course"]
+        if course not in ENROLLMENTS[user]:
+            ENROLLMENTS[user].append(course)
 
     return render_template(
         "dashboard.html",
-        user=session["user"],
-        messages=MESSAGES
+        user=user,
+        courses=COURSES,
+        enrolled=ENROLLMENTS[user]
     )
 
 
 @app.route("/logout")
 def logout():
-    session.pop("user", None)
+    session.clear()
     return redirect(url_for("login"))
 
 
@@ -64,4 +86,3 @@ def health():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
-

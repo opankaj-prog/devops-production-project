@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DevOps Learning Portal</title>
+    <style>
+        body {
+            background: linear-gradient(120deg, #0f2027, #203a43, #2c5364);
+            font-family: Arial;
+            color: white;
+            display: flex;
+            height: 100vh;
+            align-items: center;
+            justify-content: center;
+        }
+        .card {
+            background: white;
+            color: black;
+            padding: 30px;
+            width: 350px;
+            border-radius: 10px;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        button {
+            background: #2c5364;
+            color: white;
+            border: none;
+        }
+        a {
+            display: block;
+            text-align: center;
+            margin-top: 10px;
+        }
+        .error { color: red; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>🚀 DevOps Learning Portal</h2>
+    <p>Learn DevOps from Linux to Kubernetes</p>
+
+    <form method="POST">
+        <input name="username" placeholder="Username" required />
+        <input name="password" type="password" placeholder="Password" required />
+        <button>Login</button>
+    </form>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <a href="/register">New user? Register</a>
+</div>
+
+</body>
+</html>

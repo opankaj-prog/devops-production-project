@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Register | DevOps Portal</title>
+    <style>
+        body {
+            background: #f4f6f8;
+            font-family: Arial;
+            display: flex;
+            height: 100vh;
+            align-items: center;
+            justify-content: center;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            width: 350px;
+            border-radius: 10px;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        button {
+            background: #1f4037;
+            color: white;
+            border: none;
+        }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>📝 Register</h2>
+
+    <form method="POST">
+        <input name="username" placeholder="Choose username" required />
+        <input name="password" type="password" placeholder="Choose password" required />
+        <button>Create Account</button>
+    </form>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+</div>
+
+</body>
+</html>
