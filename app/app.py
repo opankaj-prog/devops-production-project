@@ -145,6 +145,19 @@ def dashboard():
     if "user" not in session:
         return redirect("/login")
     return render_template("dashboard.html", user=session["user"])
+@app.route("/courses")
+def courses():
+    conn = sqlite3.connect("database.db")
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM courses")
+    courses = cur.fetchall()
+
+    conn.close()
+
+    return render_template("courses.html", courses=courses)
+
 
 @app.route("/logout")
 def logout():
