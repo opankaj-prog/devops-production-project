@@ -1,18 +1,13 @@
-<h2>Your Dashboard</h2>
+<h2>Welcome {{ user }}</h2>
 
-<form method="POST">
-  <select name="course">
-    {% for c in courses %}
-    <option>{{ c }}</option>
-    {% endfor %}
-  </select>
-  <button>Enroll</button>
-</form>
+<p>You are enrolled in DevOps Learning Platform 🚀</p>
 
 <ul>
-  {% for c in enrolled %}
-  <li><a href="/course/{{ c }}">{{ c }}</a></li>
-  {% endfor %}
+  <li>Linux Fundamentals</li>
+  <li>Git & GitHub</li>
+  <li>Docker</li>
+  <li>Kubernetes</li>
+  <li>CI/CD Pipelines</li>
 </ul>
 
 <a href="/logout">Logout</a>

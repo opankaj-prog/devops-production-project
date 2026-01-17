@@ -1,152 +1,155 @@
-from flask import Flask, render_template, request, redirect, session, url_for
+from flask import Flask, render_template, request, redirect, session
+import sqlite3
 import random
-from datetime import datetime
+import time
+import smtplib
+import os
+from email.message import EmailMessage
 
 app = Flask(__name__)
-app.secret_key = "devops-production-secret"
+app.secret_key = "supersecretkey"
 
-# ---- In-memory DB (replace with RDS later) ----
-USERS = {}
-OTP_STORE = {}
-COURSES = {
-    "Docker": ["What is Docker?", "Docker Images", "Docker Containers"],
-    "Kubernetes": ["K8s Basics", "Pods", "Services"]
-}
-ENROLLMENTS = {}
-PROGRESS = {}
+# ---------------- DATABASE ----------------
+conn = sqlite3.connect("database.db", check_same_thread=False)
+cursor = conn.cursor()
 
-ADMIN_USER = "admin"
-ADMIN_PASS = "admin123"
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS users (
+    username TEXT PRIMARY KEY,
+    email TEXT,
+    password TEXT,
+    verified INTEGER DEFAULT 0
+)
+""")
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS otp_verification (
+    username TEXT,
+    otp TEXT,
+    expires_at INTEGER
+)
+""")
+
+conn.commit()
+
+# ---------------- OTP + EMAIL ----------------
+def generate_otp():
+    return str(random.randint(100000, 999999))
+
+def send_otp_email(to_email, otp):
+    msg = EmailMessage()
+    msg.set_content(f"""
+Welcome to Omprakash DevOps Learning Platform 🚀
+
+Your OTP is: {otp}
+Valid for 5 minutes.
+""")
+
+    msg["Subject"] = "Verify your DevOps Account"
+    msg["From"] = os.environ.get("SMTP_EMAIL")
+    msg["To"] = to_email
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        smtp.login(
+            os.environ.get("SMTP_EMAIL"),
+            os.environ.get("SMTP_PASSWORD")
+        )
+        smtp.send_message(msg)
 
 # ---------------- ROUTES ----------------
-
 @app.route("/")
 def home():
     return redirect("/login")
 
-# ---------- AUTH ----------
-
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        user = request.form["username"]
-        pwd = request.form["password"]
+        username = request.form["username"]
         email = request.form["email"]
-        mobile = request.form["mobile"]
+        password = request.form["password"]
 
-        if user in USERS:
-            return "User already exists"
+        cursor.execute(
+            "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
+            (username, email, password)
+        )
+        conn.commit()
 
-        USERS[user] = {
-            "password": pwd,
-            "verified": False,
-            "email": email,
-            "mobile": mobile
-        }
+        otp = generate_otp()
+        expiry = int(time.time()) + 300
 
-        otp = str(random.randint(100000, 999999))
-        OTP_STORE[user] = otp
-        print(f"OTP for {user}: {otp}")  # Simulated SMS/Email
+        cursor.execute(
+            "INSERT INTO otp_verification VALUES (?, ?, ?)",
+            (username, otp, expiry)
+        )
+        conn.commit()
 
-        return redirect(f"/verify/{user}")
+        send_otp_email(email, otp)
+        return redirect(f"/verify/{username}")
 
     return render_template("register.html")
 
-
-@app.route("/verify/<user>", methods=["GET", "POST"])
-def verify(user):
+@app.route("/verify/<username>", methods=["GET", "POST"])
+def verify(username):
     if request.method == "POST":
-        if request.form["otp"] == OTP_STORE.get(user):
-            USERS[user]["verified"] = True
-            ENROLLMENTS[user] = []
-            PROGRESS[user] = {}
+        entered_otp = request.form["otp"]
+
+        cursor.execute(
+            "SELECT otp, expires_at FROM otp_verification WHERE username=?",
+            (username,)
+        )
+        row = cursor.fetchone()
+
+        if not row:
+            return "Invalid request"
+
+        otp, expires_at = row
+
+        if time.time() > expires_at:
+            return "OTP expired"
+
+        if entered_otp == otp:
+            cursor.execute("DELETE FROM otp_verification WHERE username=?", (username,))
+            cursor.execute("UPDATE users SET verified=1 WHERE username=?", (username,))
+            conn.commit()
             return redirect("/login")
+
         return "Invalid OTP"
 
-    return render_template("verify.html", user=user)
-
+    return render_template("verify.html")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        user = request.form["username"]
-        pwd = request.form["password"]
+        username = request.form["username"]
+        password = request.form["password"]
 
-        if user == ADMIN_USER and pwd == ADMIN_PASS:
-            session["admin"] = True
-            return redirect("/admin")
+        cursor.execute(
+            "SELECT verified FROM users WHERE username=? AND password=?",
+            (username, password)
+        )
+        user = cursor.fetchone()
 
-        if user in USERS and USERS[user]["password"] == pwd:
-            if not USERS[user]["verified"]:
-                return "Verify account first"
-            session["user"] = user
-            return redirect("/dashboard")
+        if not user:
+            return "Invalid credentials"
+
+        if user[0] == 0:
+            return "Please verify your account first"
+
+        session["user"] = username
+        return redirect("/dashboard")
 
     return render_template("login.html")
 
+@app.route("/dashboard")
+def dashboard():
+    if "user" not in session:
+        return redirect("/login")
+    return render_template("dashboard.html", user=session["user"])
 
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/login")
-
-# ---------- USER ----------
-
-@app.route("/dashboard", methods=["GET", "POST"])
-def dashboard():
-    if "user" not in session:
-        return redirect("/login")
-
-    user = session["user"]
-
-    if request.method == "POST":
-        course = request.form["course"]
-        if course not in ENROLLMENTS[user]:
-            ENROLLMENTS[user].append(course)
-            PROGRESS[user][course] = 0
-
-    return render_template(
-        "dashboard.html",
-        courses=COURSES.keys(),
-        enrolled=ENROLLMENTS[user]
-    )
-
-
-@app.route("/course/<course>", methods=["GET", "POST"])
-def course(course):
-    user = session["user"]
-    lessons = COURSES.get(course, [])
-
-    if request.method == "POST":
-        PROGRESS[user][course] += int(100 / len(lessons))
-
-    return render_template(
-        "course.html",
-        course=course,
-        lessons=lessons,
-        progress=PROGRESS[user][course]
-    )
-
-# ---------- ADMIN ----------
-
-@app.route("/admin", methods=["GET", "POST"])
-def admin():
-    if not session.get("admin"):
-        return redirect("/login")
-
-    if request.method == "POST":
-        cname = request.form["course"]
-        lesson = request.form["lesson"]
-
-        COURSES.setdefault(cname, []).append(lesson)
-
-    return render_template("admin.html", courses=COURSES)
-
-
-@app.route("/health")
-def health():
-    return {"status": "healthy"}, 200
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
