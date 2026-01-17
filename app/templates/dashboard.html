@@ -1,13 +1,17 @@
-<h2>Welcome {{ user }}</h2>
+<h2>📘 My Learning Dashboard</h2>
 
-<p>You are enrolled in DevOps Learning Platform 🚀</p>
+{% if courses %}
+  {% for c in courses %}
+    <div style="border:1px solid #ddd; padding:15px; margin:10px">
+      <h3>{{ c.title }}</h3>
+      <p>Progress: {{ c.completed_lessons }} / {{ c.total_lessons }}</p>
+      <a href="/course/{{ c.id }}">Continue Learning</a>
+    </div>
+  {% endfor %}
+{% else %}
+  <p>You are not enrolled in any course.</p>
+  <a href="/courses">Browse Courses</a>
+{% endif %}
 
-<ul>
-  <li>Linux Fundamentals</li>
-  <li>Git & GitHub</li>
-  <li>Docker</li>
-  <li>Kubernetes</li>
-  <li>CI/CD Pipelines</li>
-</ul>
-
+<br>
 <a href="/logout">Logout</a>

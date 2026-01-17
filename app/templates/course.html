@@ -1,12 +1,15 @@
-<h2>{{ course }}</h2>
-<p>Progress: {{ progress }}%</p>
+<h2 style="text-align:center">Choose Your DevOps Path</h2>
 
-<ul>
-  {% for l in lessons %}
-  <li>{{ l }}</li>
-  {% endfor %}
-</ul>
-
-<form method="POST">
-  <button>Mark Lesson Completed</button>
-</form>
+{% for c in courses %}
+<div style="
+  width:60%;
+  margin:20px auto;
+  padding:20px;
+  border:1px solid #ccc;
+  border-radius:8px;
+">
+  <h3>{{ c.title }}</h3>
+  <p>{{ c.description }}</p>
+  <a href="/enroll/{{ c.id }}">Enroll Now</a>
+</div>
+{% endfor %}

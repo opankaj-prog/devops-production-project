@@ -136,7 +136,7 @@ def login():
             return "Please verify your account first"
 
         session["user"] = username
-        return redirect("/dashboard")
+        return redirect("/courses")
 
     return render_template("login.html")
 
