@@ -37,25 +37,25 @@ jobs:
           echo "image_tag=$TAG" >> $GITHUB_OUTPUT
 
   deploy:
-  name: Deploy to EC2
-  needs: build
-  runs-on: ubuntu-latest
+    name: Deploy to EC2
+    needs: build
+    runs-on: ubuntu-latest
 
-  steps:
-    - name: Deploy via SSH
-      uses: appleboy/ssh-action@v1.0.3
-      env:
-        SMTP_EMAIL: ${{ secrets.SMTP_EMAIL }}
-        SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ubuntu
-        key: ${{ secrets.EC2_SSH_KEY }}
-        script: |
-          set -e
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          SMTP_EMAIL: ${{ secrets.SMTP_EMAIL }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
 
-          export SMTP_EMAIL="${SMTP_EMAIL}"
-          export SMTP_PASSWORD="${SMTP_PASSWORD}"
+            export SMTP_EMAIL="${SMTP_EMAIL}"
+            export SMTP_PASSWORD="${SMTP_PASSWORD}"
 
-          cd ~/deploy
-          ./deploy.sh ${{ needs.build.outputs.image_tag }}
+            cd ~/deploy
+            ./deploy.sh ${{ needs.build.outputs.image_tag }}
