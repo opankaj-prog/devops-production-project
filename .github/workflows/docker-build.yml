@@ -44,10 +44,6 @@ jobs:
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
-        envs: SMTP_EMAIL,SMTP_PASSWORD
-        env:
-          SMTP_EMAIL: ${{ secrets.SMTP_EMAIL }}
-          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
@@ -55,8 +51,7 @@ jobs:
           script: |
             set -e
 
-            export SMTP_EMAIL="${SMTP_EMAIL}"
-            export SMTP_PASSWORD="${SMTP_PASSWORD}"
-
             cd ~/deploy
+            SMTP_EMAIL="${{ secrets.SMTP_EMAIL }}" \
+            SMTP_PASSWORD="${{ secrets.SMTP_PASSWORD }}" \
             ./deploy.sh ${{ needs.build.outputs.image_tag }}
