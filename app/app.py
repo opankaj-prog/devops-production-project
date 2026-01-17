@@ -1,35 +1,66 @@
-from flask import Flask, render_template, request
-import socket
-import time
+from flask import Flask, render_template, request, redirect, url_for, session
+from datetime import datetime
+import os
 
 app = Flask(__name__)
 
-start_time = time.time()
-request_count = 0
-container_name = socket.gethostname()
+# REQUIRED for session management
+app.secret_key = "production-secret-key"
+
+# In-memory storage (production apps use DB)
+MESSAGES = []
+
+# Dummy user (for learning purpose)
+USERS = {
+    "admin": "admin123"
+}
 
 @app.route("/", methods=["GET", "POST"])
-def home():
-    global request_count
-    request_count += 1
-
-    user_message = None
+def login():
     if request.method == "POST":
-        user_message = request.form.get("message")
+        username = request.form.get("username")
+        password = request.form.get("password")
 
-    uptime = int(time.time() - start_time)
+        if USERS.get(username) == password:
+            session["user"] = username
+            return redirect(url_for("dashboard"))
+        else:
+            return render_template("index.html", error="Invalid credentials")
+
+    return render_template("index.html")
+
+
+@app.route("/dashboard", methods=["GET", "POST"])
+def dashboard():
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        message = request.form.get("message")
+        if message:
+            MESSAGES.append({
+                "user": session["user"],
+                "message": message,
+                "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
 
     return render_template(
-        "index.html",
-        container_name=container_name,
-        requests=request_count,
-        uptime=uptime,
-        user_message=user_message
+        "dashboard.html",
+        user=session["user"],
+        messages=MESSAGES
     )
+
+
+@app.route("/logout")
+def logout():
+    session.pop("user", None)
+    return redirect(url_for("login"))
+
 
 @app.route("/health")
 def health():
-    return "OK", 200
+    return {"status": "healthy"}, 200
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
